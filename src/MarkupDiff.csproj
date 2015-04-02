@@ -57,7 +57,7 @@
     <Compile Include="Line.cs" />
     <Compile Include="LineSection.cs" />
     <Compile Include="LineStyleNames.cs" />
-    <Compile Include="LineType.cs" />
+    <Compile Include="LineComparisonTypes.cs" />
     <Compile Include="ListViewFast.cs">
       <SubType>Component</SubType>
     </Compile>

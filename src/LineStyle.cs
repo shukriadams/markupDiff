@@ -36,7 +36,7 @@ namespace MarkupDiff
 
             styles.Add(new LineStyle { Name = LineStyleNames.LineNumber, BackColor = Color.Black, ForeColor = Color.White, IsBold = true });
             styles.Add(new LineStyle { Name = LineStyleNames.Match, BackColor = Color.LightGreen, ForeColor = Color.Green, IsBold = true });
-            styles.Add(new LineStyle { Name = LineStyleNames.Mismatch, BackColor = Color.Red, ForeColor = Color.Black, IsBold = true });
+            styles.Add(new LineStyle { Name = LineStyleNames.NoMatch, BackColor = Color.Red, ForeColor = Color.Black, IsBold = true });
             styles.Add(new LineStyle { Name = LineStyleNames.Whitespace, BackColor = Color.Gray, ForeColor = Color.DarkGray, IsBold = false });
             styles.Add(new LineStyle { Name = LineStyleNames.Ignore, BackColor = Color.DarkGreen, ForeColor = Color.LightGreen, IsBold = false });
             styles.Add(new LineStyle { Name = LineStyleNames.Ignore, BackColor = Color.DarkGreen, ForeColor = Color.LightGreen, IsBold = false });

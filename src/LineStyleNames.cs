@@ -5,10 +5,10 @@
     /// </summary>
     public enum LineStyleNames
     {
-        LineNumber = 0,
-        Match = 1,
-        Mismatch = 2,
-        Whitespace = 3,
-        Ignore = 4
+        Match = 0,
+        NoMatch = 1,
+        Whitespace = 2,
+        Ignore = 3,
+        LineNumber = 4,
     }
 }

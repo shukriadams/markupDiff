@@ -134,7 +134,7 @@ namespace MarkupDiff
         /// <param name="linenumber"></param>
         private void RenderLine(RichTextBox richTextBox, Line line, int rawLineNumber, int totalLineNumbers)
         {
-            string originalLineNumber = line.LineType == LineType.Padding ? " " : (line.OriginalLineNumber + 1).ToString();
+            string originalLineNumber = line.LineType == LineComparisonTypes.Whitespace ? " " : (line.OriginalLineNumber + 1).ToString();
             originalLineNumber = PadUntilLength(originalLineNumber, totalLineNumbers.ToString().Length);
 
             //raw line number

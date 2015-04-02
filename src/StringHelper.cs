@@ -8,6 +8,54 @@ namespace MarkupDiff
     public class StringHelper
     {
         /// <summary>
+        /// Returns position from start at which first and second string begin to differ. 
+        /// </summary>
+        /// <param name="first"></param>
+        /// <param name="second"></param>
+        /// <returns></returns>
+        public static int Trace(string first, string second)
+        {
+            int position = 0;
+            while (position < first.Length && position < second.Length)
+            {
+                if (first.Substring(position, 1) != second.Substring(position, 1))
+                    return position;
+                position++;
+            }
+            // failed to find so far
+            if (first.StartsWith(second))
+                return second.Length;
+            if (second.StartsWith(first))
+                return first.Length;
+            // give up
+            return -1;
+        }
+
+        /// <summary>
+        /// Returns position from end at which first and second string begin to differ. 
+        /// </summary>
+        /// <param name="first"></param>
+        /// <param name="second"></param>
+        /// <returns></returns>
+        public static int TraceFromEnd(string first, string second)
+        {
+            int countFirst = first.Length - 1;
+            int countSecond = second.Length - 1;
+
+            while (true)
+            {
+                if (countFirst < 0 || countSecond < 0)
+                    break;
+
+                if (first.Substring(countFirst, 1) != second.Substring(countSecond, 1))
+                    return countFirst + 1; // return +1 because by the time we've discovered differne, we've gone 1 too far
+                countFirst--;
+                countSecond--;
+            }
+            return -1;
+        }
+
+        /// <summary>
         /// 
         /// </summary>
         /// <param name="main"></param>

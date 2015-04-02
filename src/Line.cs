@@ -18,7 +18,7 @@ namespace MarkupDiff
         /// <summary>
         /// Match analysis of this line, against opposite file.
         /// </summary>
-        public LineType LineType { get; set; }
+        public LineComparisonTypes LineType { get; set; }
 
         /// <summary>
         /// Original text line number from file.
