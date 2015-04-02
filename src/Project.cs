@@ -4,15 +4,53 @@ using System.Xml;
 
 namespace MarkupDiff
 {
+    /// <summary>
+    /// Stores information about a project. Project data is stored in an xml file which is user-editable.
+    /// A project is built around source files and destination files, how they are connected, and will
+    /// eventually also include historical / change data.
+    /// </summary>
     public class Project
     {
+        #region PROPERTIES
+
+        /// <summary>
+        /// 
+        /// </summary>
         public string MatchTagStart { get; set; }
+
+        /// <summary>
+        /// 
+        /// </summary>
         public string MatchTagEnd { get; set; }
+
+        /// <summary>
+        /// 
+        /// </summary>
         public IEnumerable<string> TargetFilesToSearch { get; set; }
+
+        /// <summary>
+        /// 
+        /// </summary>
         public IEnumerable<string> SourceFilesToSearch { get; set; }
+
+        /// <summary>
+        /// 
+        /// </summary>
         public string SourceRootFolder { get; set; }
+
+        /// <summary>
+        /// 
+        /// </summary>
         public string DestinationRootFolder { get; set; }
 
+        #endregion
+
+        #region CTORS
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="path"></param>
         public Project(string path) 
         {
             XmlDocument doc = new XmlDocument();
@@ -55,8 +93,10 @@ namespace MarkupDiff
                 throw new Exception("match tag in app settings must contain '{?}'");
             }
 
-            this.MatchTagStart = ParserLib.ReturnUpto(matchTag, "{?}");
-            this.MatchTagEnd = ParserLib.ReturnAfter(matchTag, "{?}");
+            this.MatchTagStart = StringHelper.ReturnUpto(matchTag, "{?}");
+            this.MatchTagEnd = StringHelper.ReturnAfter(matchTag, "{?}");
         }
+
+        #endregion
     }
 }

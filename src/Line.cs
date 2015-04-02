@@ -2,8 +2,14 @@
 
 namespace MarkupDiff
 {
+    /// <summary>
+    /// Line in a file being compared. Files are broken up into lines. A line can be broken up into LineSections - there's always at least one, 
+    /// but a line can be broken up into several line sections if we try to do a partial match on it.
+    /// </summary>
     public class Line
     {
+        #region PROPERTIES
+
         /// <summary>
         /// Text to be rendered. One chunk of text, unless partial matching within line was done, in which case 2-3 chunks
         /// </summary>
@@ -35,11 +41,16 @@ namespace MarkupDiff
         /// Original, unprocessed text line, from text file.
         /// </summary>
         public string OriginalText { get; set; }
-    
+
+        #endregion
+
+        #region CTORS
 
         public Line() 
         {
             this.Sections = new List<LineSection>();
         }
+
+        #endregion
     }
 }

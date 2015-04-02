@@ -2,7 +2,10 @@
 
 namespace MarkupDiff
 {
-    public class ParserLib
+    /// <summary>
+    /// Utility library for doing things with strings.
+    /// </summary>
+    public class StringHelper
     {
         /// <summary>
         /// 

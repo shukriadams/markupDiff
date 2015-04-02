@@ -4,45 +4,59 @@ using System.Linq;
 
 namespace MarkupDiff
 {
+    /// <summary>
+    /// Stores rendering information for a given line style in file renderer. Line style is used by Rich Text Box.
+    /// </summary>
     public class LineStyle
     {
-        public Color? ForeColor { get; set; }
+        #region PROPERTIES
 
-        public Color? BackColor { get; set; }
+        public Color ForeColor { get; set; }
+
+        public Color BackColor { get; set; }
         
         public bool IsBold { get; set; }
 
-        public string Name { get; set; } 
+        public LineStyleNames Name { get; set; }
 
-        private static  IEnumerable<LineStyle> LoadStyles() 
-        {
-            List<LineStyle> styles = new List<LineStyle>();
-            // todo : load from style sheet
-            styles.Add(new LineStyle { Name = "line-number", BackColor = Color.Black, ForeColor = Color.White, IsBold = true });
-            styles.Add(new LineStyle { Name = "code-match", BackColor = Color.LightGreen, ForeColor = Color.Green, IsBold = true });
-            styles.Add(new LineStyle { Name = "code-nomatch", BackColor = Color.Red, ForeColor = Color.Black, IsBold = true });
-            styles.Add(new LineStyle { Name = "padding", BackColor = Color.Gray, ForeColor = Color.DarkGray, IsBold = false });
-            styles.Add(new LineStyle { Name = "comment", BackColor = Color.DarkGreen, ForeColor = Color.LightGreen, IsBold = false });
-            styles.Add(new LineStyle { Name = "code", BackColor = Color.DarkGreen, ForeColor = Color.LightGreen, IsBold = false });
-            return styles;
-        }
+        #endregion
+
+        #region STATIC
 
         private static IEnumerable<LineStyle> _styles;
 
-        public static LineStyle Get(string name)
+        /// <summary>
+        /// Defines all styles for file viewer. 
+        /// todo : move these to user-editable style sheet
+        /// </summary>
+        /// <returns></returns>
+        private static  IEnumerable<LineStyle> LoadStyles() 
         {
-            return Styles.FirstOrDefault(r => r.Name == name);
+            List<LineStyle> styles = new List<LineStyle>();
+
+            styles.Add(new LineStyle { Name = LineStyleNames.LineNumber, BackColor = Color.Black, ForeColor = Color.White, IsBold = true });
+            styles.Add(new LineStyle { Name = LineStyleNames.Match, BackColor = Color.LightGreen, ForeColor = Color.Green, IsBold = true });
+            styles.Add(new LineStyle { Name = LineStyleNames.Mismatch, BackColor = Color.Red, ForeColor = Color.Black, IsBold = true });
+            styles.Add(new LineStyle { Name = LineStyleNames.Whitespace, BackColor = Color.Gray, ForeColor = Color.DarkGray, IsBold = false });
+            styles.Add(new LineStyle { Name = LineStyleNames.Ignore, BackColor = Color.DarkGreen, ForeColor = Color.LightGreen, IsBold = false });
+            styles.Add(new LineStyle { Name = LineStyleNames.Ignore, BackColor = Color.DarkGreen, ForeColor = Color.LightGreen, IsBold = false });
+            return styles;
         }
 
-        public static IEnumerable<LineStyle> Styles 
+        /// <summary>
+        /// Gets a style item 
+        /// </summary>
+        /// <param name="style"></param>
+        /// <returns></returns>
+        public static LineStyle Get(LineStyleNames style)
         {
-            get 
-            {
-                if (_styles == null) {
-                    _styles = LoadStyles();
-                }
-                return _styles;
-            }
+            if (_styles == null)
+                _styles = LoadStyles();
+
+            return _styles.FirstOrDefault(r => r.Name == style);
         }
+
+        #endregion
+
     }
 }

@@ -144,7 +144,7 @@ namespace MarkupDiff
             richTextBox.AppendText(lineNumberOut);
 
             // file line number
-            richTextBox.AppendText(originalLineNumber, LineStyle.Get("line-number"));
+            richTextBox.AppendText(originalLineNumber, LineStyle.Get(LineStyleNames.LineNumber));
 
             foreach (var section in line.Sections)
             {
@@ -154,9 +154,10 @@ namespace MarkupDiff
         }
 
         /// <summary>
-        /// 
+        /// Loads source and desination files in a project, tries to find links between them, and 
+        /// renders them in file list.
         /// </summary>
-        private void LoadProject()
+        private void LinkFilesInProject()
         {
 
             if (_currentProjectFile == null)
@@ -182,31 +183,39 @@ namespace MarkupDiff
             projectContainer.Visible = true;
             pnlProjects.Visible = false;
 
-            IEnumerable<string> sourceFiles = FileSystemLib.GetFilesUnder(project.SourceRootFolder, project.SourceFilesToSearch);
-            IEnumerable<string> destinationFiles = FileSystemLib.GetFilesUnder(project.DestinationRootFolder, project.TargetFilesToSearch);
+            // fetch all files in source and destination folders
+            IEnumerable<string> sourceFiles = FileSystemHelper.GetFilesUnder(project.SourceRootFolder, project.SourceFilesToSearch);
+            IEnumerable<string> destinationFiles = FileSystemHelper.GetFilesUnder(project.DestinationRootFolder, project.TargetFilesToSearch);
 
 
             lvFiles.Items.Clear();
+
+            // for each destination file, find any file link tags in its content, extract file name, then try to find a matching source
+            // file with that name or path fragment.
             foreach (string destinationFile in destinationFiles)
             {
                 string fileContent = File.ReadAllText(destinationFile);
                 if (!fileContent.Contains(project.MatchTagStart))
                     continue;
-                IEnumerable<string> linkedSourceFiles = ParserLib.ReturnBetweenAll(fileContent, project.MatchTagStart, project.MatchTagEnd);
-                if (linkedSourceFiles.Count() == 0)
+
+                // more than one source file can be specified in source file
+                IEnumerable<string> linkedSourceFiles = StringHelper.ReturnBetweenAll(fileContent, project.MatchTagStart, project.MatchTagEnd);
+                if (!linkedSourceFiles.Any())
                     continue;
 
                 foreach (string linkedSourceFile in linkedSourceFiles) {
                     string linkingTag = project.MatchTagStart + linkedSourceFile + project.MatchTagEnd;
                     string foundSourceFile = sourceFiles.FirstOrDefault(r => r.EndsWith(linkedSourceFile));
-                    if (foundSourceFile == null)
-                        continue; // todo warn about broken link
 
-                    ListViewItemWithData row = new ListViewItemWithData
+                    // todo warn about broken link
+                    if (foundSourceFile == null)
+                        continue; 
+
+                    FileLinkListViewItem row = new FileLinkListViewItem
                     {
-                        Text = Path.GetFileName(destinationFile) + " < " + Path.GetFileName(foundSourceFile)
+                        Text = Path.GetFileName(destinationFile) + " < " + Path.GetFileName(foundSourceFile),
+                        FileLink = new FileLink { DestinationFile = destinationFile, SourceFile = foundSourceFile, LinkingTag = linkingTag }
                     };
-                    row.FileLink = new FileLink { DestinationFile = destinationFile, SourceFile = foundSourceFile, LinkingTag = linkingTag };
                     lvFiles.Items.Insert(0, row);
                 }
 
@@ -225,7 +234,7 @@ namespace MarkupDiff
             if (!Directory.Exists(projectsFolder))
                 Directory.CreateDirectory(projectsFolder);
 
-            IEnumerable<string> projectFiles = FileSystemLib.GetFilesUnder(projectsFolder, new []{"xml"});
+            IEnumerable<string> projectFiles = FileSystemHelper.GetFilesUnder(projectsFolder, new []{"xml"});
             
 
             if (projectFiles.Count() == 0)
@@ -240,11 +249,11 @@ namespace MarkupDiff
 
             lvProjects.Clear();
             foreach(string projectFile in projectFiles){
-                ListViewItemWithData row = new ListViewItemWithData
+                ProjectListViewItem row = new ProjectListViewItem
                 {
-                    Text = Path.GetFileName(projectFile)
+                    Text = Path.GetFileName(projectFile),
+                    ProjectFile = projectFile
                 };
-                row.Data = projectFile;
                 lvProjects.Items.Insert(0, row);
             }
 
@@ -297,7 +306,7 @@ namespace MarkupDiff
         /// <param name="e"></param>
         private void btnReload_Click(object sender, EventArgs e)
         {
-            LoadProject();
+            LinkFilesInProject();
         }
 
         private void cbShowCode_CheckedChanged(object sender, EventArgs e)
@@ -349,7 +358,7 @@ namespace MarkupDiff
             if (lvFiles.SelectedItems.Count == 0)
                 return;
 
-            ListViewItemWithData item = lvFiles.SelectedItems[0] as ListViewItemWithData;
+            FileLinkListViewItem item = lvFiles.SelectedItems[0] as FileLinkListViewItem;
             _currentFileComparison = item.FileLink;
             this.LoadFiles();
         }
@@ -364,9 +373,9 @@ namespace MarkupDiff
             if (lvProjects.SelectedItems.Count == 0)
                 return;
 
-            ListViewItemWithData item = lvProjects.SelectedItems[0] as ListViewItemWithData;
-            _currentProjectFile = item.Data as string;
-            LoadProject();
+            ProjectListViewItem item = lvProjects.SelectedItems[0] as ProjectListViewItem;
+            _currentProjectFile = item.ProjectFile;
+            LinkFilesInProject();
         }
 
         private void btnViewProjects_Click(object sender, EventArgs e)

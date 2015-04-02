@@ -4,6 +4,9 @@ using System.Linq;
 
 namespace MarkupDiff
 {
+    /// <summary>
+    /// Contains all logic for comparing files.
+    /// </summary>
     public class FileAnaylser
     {
         #region PROPERTIES
@@ -14,15 +17,6 @@ namespace MarkupDiff
 
         #endregion
 
-        #region CTORS
-
-        public FileAnaylser() 
-        {
-
-        }
-
-        #endregion
-
         #region METHODS
 
         /// <summary>
@@ -30,6 +24,7 @@ namespace MarkupDiff
         /// </summary>
         /// <param name="sourceFile"></param>
         /// <param name="targetFile"></param>
+        /// <param name="linkingTag"></param>
         /// <returns></returns>
         public FileComparison Process(string sourceFile, string targetFile, string linkingTag)
         {
@@ -230,19 +225,19 @@ namespace MarkupDiff
                 string text = line.OriginalText;
                 LineType matchType = line.LineType;
                 IList<LineSection> sections = new List<LineSection>();
-                string className = string.Empty;
+                LineStyleNames className;
 
 
                 if (matchType == LineType.Padding)
-                    className = "padding";
+                    className = LineStyleNames.Whitespace;
                 else if (matchType == LineType.Match)
-                    className = "code-match";
+                    className = LineStyleNames.Match;
                 else if (matchType == LineType.Comment)
-                    className = "comment";
+                    className = LineStyleNames.Ignore;
                 else if (matchType == LineType.Code)
-                    className = "code";
+                    className = LineStyleNames.Ignore;
                 else
-                    className = "code-nomatch";
+                    className = LineStyleNames.Mismatch;
 
                 if (text == null)
                     text = string.Empty;
@@ -336,7 +331,7 @@ namespace MarkupDiff
 
                 int startPadding = thisLine.OriginalText.Length - thisLine.OriginalText.TrimStart().Length;
                 if (startPadding != 0) {
-                    sections.Insert(0, new LineSection { LineStyle = LineStyle.Get("padding"), Text = string.Empty.PadLeft(startPadding) });
+                    sections.Insert(0, new LineSection { LineStyle = LineStyle.Get(LineStyleNames.Whitespace), Text = string.Empty.PadLeft(startPadding) });
                 }
 
 
@@ -356,7 +351,7 @@ namespace MarkupDiff
                 {
                     leadTextSection = new LineSection
                     {
-                        LineStyle = LineStyle.Get("code-match"),
+                        LineStyle = LineStyle.Get(LineStyleNames.Match),
                         Text = thisLineText.Substring(0, startSplit)
                     };
                     partialMatch = true;
@@ -369,7 +364,7 @@ namespace MarkupDiff
                 {
                     tailTextSection = new LineSection
                     {
-                        LineStyle = LineStyle.Get("code-match"),
+                        LineStyle = LineStyle.Get(LineStyleNames.Match),
                         Text = thisLineText.Substring(endSplit, thisLineText.Length - endSplit)
                     }; 
 
@@ -393,7 +388,7 @@ namespace MarkupDiff
                 string differentText = thisLineText.Substring(differenceStart, differenceLength);
                 differentTextSection = new LineSection
                 {
-                    LineStyle = LineStyle.Get("code-nomatch"),
+                    LineStyle = LineStyle.Get(LineStyleNames.Mismatch),
                     Text = differentText
                 };
 

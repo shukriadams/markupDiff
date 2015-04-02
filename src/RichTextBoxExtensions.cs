@@ -3,6 +3,9 @@ using System.Windows.Forms;
 
 namespace MarkupDiff
 {
+    /// <summary>
+    /// Adds conveniant methods to standard RTB, for rendering styles.
+    /// </summary>
     public static class RichTextBoxExtensions
     {
         public static void AppendText(this RichTextBox box, string text, LineStyle lineStyle)
@@ -11,18 +14,12 @@ namespace MarkupDiff
 
         }
 
-        public static void AppendText(this RichTextBox box, string text, Color? textColor, Color? backgroundColor, bool bold)
+        public static void AppendText(this RichTextBox box, string text, Color textColor, Color backgroundColor, bool bold)
         {
             box.SelectionStart = box.TextLength;
             box.SelectionLength = 0;
 
             Color originalBackcolor = box.SelectionBackColor;
-
-            if (backgroundColor == null)
-                backgroundColor = box.ForeColor;
-
-            if (textColor == null)
-                textColor = box.SelectionBackColor;
 
             Font origin = box.Font;
             if (bold)
@@ -32,8 +29,8 @@ namespace MarkupDiff
                 box.SelectionFont = f;
             }
 
-            box.SelectionColor = textColor.Value;
-            box.SelectionBackColor = backgroundColor.Value;
+            box.SelectionColor = textColor;
+            box.SelectionBackColor = backgroundColor;
             
             
             box.AppendText(text);

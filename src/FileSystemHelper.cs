@@ -4,7 +4,10 @@ using System.IO;
 
 namespace MarkupDiff
 {
-    public class FileSystemLib
+    /// <summary>
+    /// Utility library for doing things with filesystem.
+    /// </summary>
+    public class FileSystemHelper
     {
         /// <summary>
         /// Gets a list of file names for files nested under a given path
