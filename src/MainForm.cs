@@ -65,9 +65,9 @@ namespace MarkupDiff
         }
 
         /// <summary>
-        /// 
+        /// Show differences between a source and target file.
         /// </summary>
-        private void LoadFiles()
+        private void LoadDifferences()
         {
             if (_currentFileComparison == null)
                 return;
@@ -133,7 +133,8 @@ namespace MarkupDiff
         /// </summary>
         /// <param name="richTextBox"></param>
         /// <param name="line"></param>
-        /// <param name="linenumber"></param>
+        /// <param name="rawLineNumber"></param>
+        /// <param name="totalLineNumbers"></param>
         private void RenderLine(RichTextBox richTextBox, Line line, int rawLineNumber, int totalLineNumbers)
         {
             string originalLineNumber = line.LineType == LineComparisonTypes.Whitespace ? " " : (line.OriginalLineNumber + 1).ToString();
@@ -159,7 +160,7 @@ namespace MarkupDiff
         /// Loads source and desination files in a project, tries to find links between them, and 
         /// renders them in file list.
         /// </summary>
-        private void LinkFilesInProject()
+        private void LoadProject()
         {
 
             if (_currentProjectFile == null)
@@ -234,12 +235,18 @@ namespace MarkupDiff
 
             lvFiles.Sorting = SortOrder.Ascending;
             lvFiles.Sort(); 
+
+            // autofocus first item in list
+            if (lvFiles.Items.Count > 0) {
+                lvFiles.Items[0].Selected = true;
+                lvFiles.Select();
+            }
         }
 
         /// <summary>
-        /// 
+        /// Loads all project files into project list view.
         /// </summary>
-        private void ListProjects() 
+        private void LoadProjects() 
         {
             string projectsFolder = Path.Combine(Environment.CurrentDirectory, "projects");
             if (!Directory.Exists(projectsFolder))
@@ -281,7 +288,7 @@ namespace MarkupDiff
         /// <param name="args"></param>
         private void OnWatchedFileChanged(object sender, FileSystemEventArgs args)
         {
-            WinFormActionDelegate dlgyConsoleUpdate = LoadFiles;
+            WinFormActionDelegate dlgyConsoleUpdate = LoadDifferences;
             this.Invoke(dlgyConsoleUpdate);
         }
 
@@ -307,7 +314,7 @@ namespace MarkupDiff
             rtbSource.WordWrap = false;
             rtbDestination.WordWrap = false;
 
-            ListProjects();
+            LoadProjects();
         }
 
         /// <summary>
@@ -317,12 +324,12 @@ namespace MarkupDiff
         /// <param name="e"></param>
         private void btnReload_Click(object sender, EventArgs e)
         {
-            LinkFilesInProject();
+            LoadProject();
         }
 
         private void cbShowCode_CheckedChanged(object sender, EventArgs e)
         {
-            this.LoadFiles();
+            this.LoadDifferences();
         }
 
         void SourceCopyAction(object sender, EventArgs e)
@@ -371,7 +378,7 @@ namespace MarkupDiff
 
             FileLinkListViewItem item = lvFiles.SelectedItems[0] as FileLinkListViewItem;
             _currentFileComparison = item.FileLink;
-            this.LoadFiles();
+            this.LoadDifferences();
         }
 
         /// <summary>
@@ -386,12 +393,12 @@ namespace MarkupDiff
 
             ProjectListViewItem item = lvProjects.SelectedItems[0] as ProjectListViewItem;
             _currentProjectFile = item.ProjectFile;
-            LinkFilesInProject();
+            LoadProject();
         }
 
         private void btnViewProjects_Click(object sender, EventArgs e)
         {
-            ListProjects();
+            LoadProjects();
         }
 
         #endregion

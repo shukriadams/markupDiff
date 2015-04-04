@@ -13,7 +13,7 @@ In your MarkupDiff.exe folder, in /projects
 	<project 
 		sourceFolder="" 
 		destinationFolder="" 
-		matchTag="@*src{file}:*@" 
+		matchTag="@*src:{file}*@" 
 		sourceFileTypes="hbs" 
 		destinationFileTypes="cshtml"  
 	/>
