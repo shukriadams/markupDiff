@@ -43,6 +43,7 @@ namespace MarkupDiff
             int maxtries = 10;
             int wait = 500;
             int tries = 0;
+
             while (tries < maxtries)
             try
             {
@@ -85,11 +86,12 @@ namespace MarkupDiff
             rtbSource.Text = string.Empty;
             rtbDestination.Text = string.Empty;
              
-            // see later for flicker reduction :http://www.c-sharpcorner.com/UploadFile/mgold/ColorSyntaxEditor12012005235814PM/ColorSyntaxEditor.aspx
+            // todo : see later for flicker reduction :http://www.c-sharpcorner.com/UploadFile/mgold/ColorSyntaxEditor12012005235814PM/ColorSyntaxEditor.aspx
             for (var i = 0; i < result.SourceFile.Count(); i++)
             {
                 RenderLine(rtbSource, result.SourceFile.ElementAt(i), i, result.SourceFile.Count());
             }
+
             for (var i = 0; i < result.DestinationFile.Count(); i++)
             {
                 RenderLine(rtbDestination, result.DestinationFile.ElementAt(i), i, result.SourceFile.Count());
@@ -166,7 +168,16 @@ namespace MarkupDiff
             if (!File.Exists(_currentProjectFile))
                 throw new Exception(string.Format("Expected file '{0}' was not found.", _currentProjectFile));
 
-            Project project = new Project(_currentProjectFile);
+            Project project; 
+            try
+            {
+                project = new Project(_currentProjectFile);
+            }
+            catch(Exception ex)
+            {
+                MessageBox.Show(ex.ToString());
+                return;
+            }
 
             if (!Directory.Exists(project.SourceRootFolder))
             {

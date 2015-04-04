@@ -146,7 +146,6 @@ namespace MarkupDiff
             FindMatches(sourceLinesOut, destinationLinesOut);
             FindMatches(destinationLinesOut, sourceLinesOut);
 
-
             // creates a single section from entire original text. this is the default state.
             BuildDefaultLineSections(sourceLinesOut);
             BuildDefaultLineSections(destinationLinesOut);
@@ -333,15 +332,15 @@ namespace MarkupDiff
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="theseLines"></param>
+        /// <param name="thisLines"></param>
         /// <param name="thoseLines"></param>
-        private static void FindMatches(IList<Line> theseLines, IList<Line> thoseLines)
+        private static void FindMatches(IList<Line> thisLines, IList<Line> thoseLines)
         {
             int thisLinecount = 0;
 
-            while (thisLinecount < theseLines.Count)
+            while (thisLinecount < thisLines.Count)
             {
-                Line thisLine = theseLines[thisLinecount];
+                Line thisLine = thisLines[thisLinecount];
                 for (int thatLineCount = thisLinecount; thatLineCount < thoseLines.Count - thisLinecount; thatLineCount++)
                 {
                     if (thatLineCount >= thoseLines.Count)
@@ -355,8 +354,10 @@ namespace MarkupDiff
                     string rawDestination = thatLine.OriginalText;
                     if (rawSource == null)
                         rawSource = string.Empty;
+
                     if (rawDestination == null)
                         rawDestination = string.Empty;
+                    
                     rawSource = rawSource.Trim();
                     rawDestination = rawDestination.Trim();
 
@@ -374,21 +375,7 @@ namespace MarkupDiff
                     }
 
                     if (match && thisLinecount < thatLineCount) {
-                        
                         thisLine.MatchedWithLineNumber = thatLine.OriginalLineNumber;
-                        
-                        /* not sure padding is meaningful
-                        for (int padCount = 0; padCount < thatLineCount - thisLinecount; padCount++) {
-
-                            theseLines.Insert(thisLinecount - 1, new Line { 
-                                LineType = LineType.Padding, 
-                                PadsOriginalLineNumber = thisLine.OriginalLineNumber - 1, 
-                                OriginalLineNumber = thisLine.OriginalLineNumber 
-                            });
-
-                            thisLinecount++;
-                        }
-                        */
                         break;
                     }
 
