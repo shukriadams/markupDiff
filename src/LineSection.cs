@@ -7,6 +7,6 @@
     {
         public string Text { get; set; }
 
-        public LineStyle LineStyle { get; set; }
+        public LineStyle Style { get; set; }
     }
 }

@@ -11,13 +11,25 @@ namespace MarkupDiff
     {
         #region PROPERTIES
 
-        public Color ForeColor { get; set; }
+        public Color ForeColor { get; private set; }
 
-        public Color BackColor { get; set; }
-        
-        public bool IsBold { get; set; }
+        public Color BackColor { get; private set; }
 
-        public LineStyleNames Name { get; set; }
+        public bool IsBold { get; private set; }
+
+        public LineStyleNames Name { get; private set; }
+
+        #endregion
+
+        #region CTORS
+
+        public LineStyle(LineStyleNames name, Color backColor, Color foreColor, bool isBold)
+        {
+            this.Name = name;
+            this.ForeColor = foreColor;
+            this.BackColor = backColor;
+            this.IsBold = isBold;
+        }
 
         #endregion
 
@@ -34,12 +46,11 @@ namespace MarkupDiff
         {
             List<LineStyle> styles = new List<LineStyle>();
 
-            styles.Add(new LineStyle { Name = LineStyleNames.LineNumber, BackColor = Color.Black, ForeColor = Color.White, IsBold = true });
-            styles.Add(new LineStyle { Name = LineStyleNames.Match, BackColor = Color.LightGreen, ForeColor = Color.Green, IsBold = true });
-            styles.Add(new LineStyle { Name = LineStyleNames.NoMatch, BackColor = Color.Red, ForeColor = Color.Black, IsBold = true });
-            styles.Add(new LineStyle { Name = LineStyleNames.Whitespace, BackColor = Color.Gray, ForeColor = Color.DarkGray, IsBold = false });
-            styles.Add(new LineStyle { Name = LineStyleNames.Ignore, BackColor = Color.DarkGreen, ForeColor = Color.LightGreen, IsBold = false });
-            styles.Add(new LineStyle { Name = LineStyleNames.Ignore, BackColor = Color.DarkGreen, ForeColor = Color.LightGreen, IsBold = false });
+            styles.Add(new LineStyle ( LineStyleNames.LineNumber, Color.Black, Color.White, true ));
+            styles.Add(new LineStyle ( LineStyleNames.Match, Color.LightGreen, Color.Green, true ));
+            styles.Add(new LineStyle ( LineStyleNames.NoMatch, Color.Red, Color.Black, true ));
+            styles.Add(new LineStyle ( LineStyleNames.Whitespace, Color.Gray, Color.DarkGray, false ));
+            styles.Add(new LineStyle ( LineStyleNames.Ignore, Color.DarkGreen, Color.LightGreen, false ));
             return styles;
         }
 
@@ -53,7 +64,8 @@ namespace MarkupDiff
             if (_styles == null)
                 _styles = LoadStyles();
 
-            return _styles.FirstOrDefault(r => r.Name == style);
+            LineStyle item = _styles.FirstOrDefault(r => r.Name == style);
+            return item;
         }
 
         #endregion

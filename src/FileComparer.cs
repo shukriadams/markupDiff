@@ -8,13 +8,40 @@ namespace MarkupDiff
     /// <summary>
     /// Contains all logic for comparing files.
     /// </summary>
-    public class FileAnaylser
+    public class FileComparer
     {
         #region PROPERTIES
 
-        public bool ShowCodeLines { get; set; }
-
+        /// <summary>
+        /// 
+        /// </summary>
         public string LinkingTag { get; set; }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public string LinkingTagStart { get; set; }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public string LinkingTagTerminate { get; set; }
+
+        #endregion
+
+        #region CTORS
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="linkingTag"></param>
+        /// <param name="linkingTagTerminate"></param>
+        public FileComparer(string linkingTag, string linkingTagStart, string linkingTagTerminate) 
+        {
+            this.LinkingTag = linkingTag;
+            this.LinkingTagStart = linkingTagStart;
+            this.LinkingTagTerminate = linkingTagTerminate;
+        }
 
         #endregion
 
@@ -25,12 +52,9 @@ namespace MarkupDiff
         /// </summary>
         /// <param name="sourceFilePath">Full path to source file.</param>
         /// <param name="destinationFilePath">Full path to target file.</param>
-        /// <param name="linkingTag"></param>
         /// <returns></returns>
-        public FileComparison Process(string sourceFilePath, string destinationFilePath, string linkingTag)
+        public FileComparison Process(string sourceFilePath, string destinationFilePath)
         {
-            this.LinkingTag = linkingTag;
-
             // check files first
             if (!File.Exists(sourceFilePath))
                 throw new Exception(string.Format("Source file {0} not found.", sourceFilePath));
@@ -43,27 +67,29 @@ namespace MarkupDiff
             string[] destinationLinesIn = File.ReadAllLines(destinationFilePath);
             
             // send source files to analysis, get them back as a FileComparison object
-            FileComparison anaysis = this.Analyse(sourceLinesIn, destinationLinesIn);
+            FileComparison anaysis = this.FirstStageMatch(sourceLinesIn, destinationLinesIn);
 
-            // file analysis returns markup only, replace missing lines, this can be optional
-            if (this.ShowCodeLines)
+
+
+            // file analysis returns markup only, replace missing lines
+            // todo : this should be replaced with ignore flag useage
+            for (int i = 0; i < sourceLinesIn.Length; i++)
             {
-                for (int i = 0; i < sourceLinesIn.Length; i++)
-                {
-                    if (anaysis.SourceFile.Any(r => r.OriginalLineNumber == i))
-                        continue;
+                if (anaysis.SourceFile.Any(r => r.OriginalLineNumber == i))
+                    continue;
 
-                    anaysis.SourceFile.Add(new Line { OriginalText = sourceLinesIn[i], OriginalLineNumber = i, LineType = LineComparisonTypes.Ignore });
-                }
-
-                for (int i = 0; i < destinationLinesIn.Length; i++)
-                {
-                    if (anaysis.DestinationFile.Any(r => r.OriginalLineNumber == i))
-                        continue;
-
-                    anaysis.DestinationFile.Add(new Line { OriginalText = destinationLinesIn[i], OriginalLineNumber = i, LineType = LineComparisonTypes.Ignore });
-                }
+                anaysis.SourceFile.Add(new Line { RawText = sourceLinesIn[i], OriginalLineNumber = i, LineType = LineTypes.Ignore });
             }
+
+            for (int i = 0; i < destinationLinesIn.Length; i++)
+            {
+                if (anaysis.DestinationFile.Any(r => r.OriginalLineNumber == i))
+                    continue;
+
+                anaysis.DestinationFile.Add(new Line { RawText = destinationLinesIn[i], OriginalLineNumber = i, LineType = LineTypes.Ignore });
+            }
+
+
 
             // add sections to lines code, comments, etc
             BuildDefaultLineSections(anaysis.SourceFile);
@@ -73,9 +99,14 @@ namespace MarkupDiff
             ProcessPartialMatches(anaysis.SourceFile, anaysis.DestinationFile);
             ProcessPartialMatches(anaysis.DestinationFile, anaysis.SourceFile);
 
+            // first stage matching does exact matches only, partial line matching finds additional matches, but as they work independently,
+            // we need to merge them and remove excessive matches
+            CleanMatches(anaysis.SourceFile, anaysis.DestinationFile);
+            CleanMatches(anaysis.DestinationFile, anaysis.SourceFile);
+
             // remove padding
-            anaysis.SourceFile = anaysis.SourceFile.Where(r => r.LineType != LineComparisonTypes.Whitespace).ToList();
-            anaysis.DestinationFile = anaysis.DestinationFile.Where(r => r.LineType != LineComparisonTypes.Whitespace).ToList();
+            anaysis.SourceFile = anaysis.SourceFile.Where(r => r.LineType != LineTypes.Whitespace).ToList();
+            anaysis.DestinationFile = anaysis.DestinationFile.Where(r => r.LineType != LineTypes.Whitespace).ToList();
 
             // order padding - this isnt necessary if padding is removed, but both should be toggled by user
             anaysis.SourceFile = anaysis.SourceFile.OrderBy(r => r.OriginalLineNumber).ThenBy(r => r.PadsOriginalLineNumber).ToList();
@@ -95,7 +126,7 @@ namespace MarkupDiff
         /// <param name="sourceLinesIn"></param>
         /// <param name="destinationLinesIn"></param>
         /// <returns></returns>
-        private FileComparison Analyse(IList<string> sourceLinesIn, IList<string> destinationLinesIn)
+        private FileComparison FirstStageMatch(IList<string> sourceLinesIn, IList<string> destinationLinesIn)
         {
             IList<Line> sourceLinesOut = new List<Line>();
             IList<Line> destinationLinesOut = new List<Line>();
@@ -107,9 +138,12 @@ namespace MarkupDiff
                 if (sourceLinesIn[i].Trim().Length == 0)
                     continue;
 
-                sourceLinesOut.Add(new Line { OriginalText = sourceLinesIn[i], OriginalLineNumber = i, LineType = LineComparisonTypes.NoMatch });
+                sourceLinesOut.Add(new Line { RawText = sourceLinesIn[i], OriginalLineNumber = i, LineType= LineTypes.Markup });
             }
 
+
+            // find position of linking tag in destination file - it is assumed the user has put the tag where expected content begins,
+            // and everything before the tag can be be ignored
             int linkingTagOffset = 0;
             if (!string.IsNullOrEmpty(this.LinkingTag))
             {
@@ -123,8 +157,6 @@ namespace MarkupDiff
                 }
             }
 
-
-
             for (int i = 0; i < destinationLinesIn.Count; i++)
             {
                 if (i < linkingTagOffset)
@@ -134,13 +166,18 @@ namespace MarkupDiff
                 if (destinationLinesIn[i].Trim().Length == 0)
                     continue;
 
-                destinationLinesOut.Add(new Line { OriginalText = destinationLinesIn[i], OriginalLineNumber = i, LineType = LineComparisonTypes.NoMatch });
+                destinationLinesOut.Add(new Line { RawText = destinationLinesIn[i], OriginalLineNumber = i, LineType = LineTypes.Markup });
             }
 
             // remove code and comments : todo move this to user-editable settings
+            // todo : instead of removing, set line type to ignore and ignore.
             string[] codeFlags = { "@", "{{", "<!--", "{{!" };
-            RemoveTags(sourceLinesOut, codeFlags);
-            RemoveTags(destinationLinesOut, codeFlags);
+            this.FlagIgnored(sourceLinesOut, codeFlags);
+            this.FlagIgnored(destinationLinesOut, codeFlags);
+
+            // 
+            IgnoreOtherLinkedFiles(sourceLinesOut, 0, false, this.LinkingTag);
+            IgnoreOtherLinkedFiles(destinationLinesOut, 0, false, this.LinkingTag);
 
             // adds padding to each file so exact matches are aligned with eachother
             FindMatches(sourceLinesOut, destinationLinesOut);
@@ -156,6 +193,30 @@ namespace MarkupDiff
         /// <summary>
         /// 
         /// </summary>
+        /// <param name="lines"></param>
+        /// <param name="startIndex"></param>
+        private void IgnoreOtherLinkedFiles(IList<Line> lines, int startIndex, bool markAsIgnore, string parentLevelLinkingTag) 
+        {
+            for (int i = startIndex; i < lines.Count(); i++) 
+            {
+                Line line = lines[i];
+                if (line.RawText.Trim() == this.LinkingTagTerminate)
+                    return;
+
+                string lineRawText = line.RawText.Trim();
+                if (lineRawText.StartsWith(this.LinkingTagStart) && lineRawText != parentLevelLinkingTag)
+                {
+                    IgnoreOtherLinkedFiles(lines, i, true, lineRawText);
+                }
+
+                if (markAsIgnore)
+                    line.LineType = LineTypes.Ignore;
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
         /// <param name="text"></param>
         /// <param name="matchType"></param>
         /// <returns></returns>
@@ -166,31 +227,14 @@ namespace MarkupDiff
                 if (line.Sections.Any())
                     continue;
 
-                string text = line.OriginalText;
-                LineComparisonTypes matchType = line.LineType;
                 IList<LineSection> sections = new List<LineSection>();
-                LineStyleNames className;
+                //LineStyleNames className;
 
-
-                if (matchType == LineComparisonTypes.Whitespace)
-                    className = LineStyleNames.Whitespace;
-                else if (matchType == LineComparisonTypes.Match)
-                    className = LineStyleNames.Match;
-                else if (matchType == LineComparisonTypes.Ignore)
-                    className = LineStyleNames.Ignore;
-                else
-                    className = LineStyleNames.NoMatch;
-
-                if (text == null)
-                    text = string.Empty;
-
-                if (matchType == LineComparisonTypes.Whitespace)
-                    text = "........"; // todo replace this with showing full line in bg color
 
                 sections.Add(new LineSection
                 {
-                    LineStyle = LineStyle.Get(className),
-                    Text = text
+                    //LineStyle = LineStyle.Get(className),
+                    Text = line.RawText ?? string.Empty // todo : ensure that this is never null
                 });
 
                 line.Sections = sections;
@@ -200,26 +244,33 @@ namespace MarkupDiff
         }
 
         /// <summary>
-        /// Removes lines from collection if they start with any string in remove list.
+        /// 
         /// </summary>
         /// <param name="lines"></param>
         /// <param name="remove"></param>
-        private static void RemoveTags(IList<Line> lines, string[] remove)
+        private void FlagIgnored(IList<Line> lines, string[] remove)
         {
-            int originalCount = lines.Count();
-            for (int i = 0; i < originalCount; i++)
+            foreach(Line line in lines)
             {
-                Line line = lines.ElementAt(originalCount - i - 1);
-                if (string.IsNullOrEmpty(line.OriginalText))
+                if (string.IsNullOrEmpty(line.RawText))
                     continue;
 
-                var rawText = line.OriginalText.Trim();
-                foreach (string checkFor in remove)
+                var rawText = line.RawText.Trim();
+
+                // assign linkingtag on destination content
+                if (rawText == this.LinkingTag)
                 {
-                    if (rawText.StartsWith(checkFor))
+                    line.LineType = LineTypes.LinkingTag;
+                }
+                else
+                {
+                    foreach (string checkFor in remove)
                     {
-                        lines.RemoveAt(originalCount - i - 1);
-                        break;
+                        if (rawText.StartsWith(checkFor))
+                        {
+                            line.LineType = LineTypes.Ignore;
+                            break;
+                        }
                     }
                 }
             }
@@ -230,27 +281,81 @@ namespace MarkupDiff
         /// </summary>
         /// <param name="theseLines"></param>
         /// <param name="thoseLines"></param>
+        private static void CleanMatches(IList<Line> theseLines, IList<Line> thoseLines) 
+        {
+            // todo : not sure this sort is needed, ensure that list already sorted
+            theseLines = theseLines.OrderBy(r => r.OriginalLineNumber).ToList();
+
+            int? linkingTagIndex = null;
+            Line linkingTagLine = theseLines.FirstOrDefault(r => r.LineType == LineTypes.LinkingTag);
+            if (linkingTagLine != null)
+                linkingTagIndex = theseLines.IndexOf(linkingTagLine);
+            return;
+
+            if (linkingTagIndex.HasValue)
+            {
+                foreach (Line line in thoseLines.Take(linkingTagIndex.Value))
+                    line.LineType = LineTypes.Ignore;
+            }
+
+            
+            int markupLines = theseLines.Count(r => r.LineType == LineTypes.Markup);
+            if (linkingTagIndex.HasValue)
+                markupLines += linkingTagIndex.Value;
+            
+            foreach (Line line in theseLines.Take(theseLines.Count - markupLines))
+                line.LineType = LineTypes.Ignore;
+
+                
+        }
+
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="theseLines"></param>
+        /// <param name="thoseLines"></param>
         private static void ProcessPartialMatches(IList<Line> theseLines, IList<Line> thoseLines)
         {
             // do partial line matches
             // count the smaller list
-            var partialLinesCheckCount = theseLines.Count > thoseLines.Count ? thoseLines.Count : theseLines.Count;
+            int partialLinesCheckCount = theseLines.Count > thoseLines.Count ? thoseLines.Count : theseLines.Count;
+            int thoseLinesStartOffset = 0;
+            Line linkingTag = thoseLines.FirstOrDefault(r => r.LineType == LineTypes.LinkingTag);
+            if (linkingTag != null)
+                thoseLinesStartOffset = thoseLines.IndexOf(linkingTag) + 1;
+
+            int theseLinesStartOffset = 0;
+            linkingTag = theseLines.FirstOrDefault(r => r.LineType == LineTypes.LinkingTag);
+            if (linkingTag != null)
+                theseLinesStartOffset = theseLines.IndexOf(linkingTag) + 1;
+
+
             for (int i = 0; i < partialLinesCheckCount; i++)
             {
-                Line thisLine = theseLines[i];
-                Line thatLine = thoseLines[i];
-                IList<LineSection> sections = new List<LineSection>();
-
-                // we want nomatch only, and only if there is text on both sides to compare
-                if (thisLine.LineType != LineComparisonTypes.NoMatch || string.IsNullOrEmpty(thisLine.OriginalText) || string.IsNullOrEmpty(thatLine.OriginalText))
+                if (thoseLines.Count <= i + thoseLinesStartOffset)
+                    continue;
+                if (theseLines.Count <= i + theseLinesStartOffset)
                     continue;
 
-                string thisLineText = thisLine.OriginalText.Trim();
-                string thatLineText = thatLine.OriginalText.Trim();
+                Line thisLine = theseLines[i + theseLinesStartOffset];
+                Line thatLine = thoseLines[i + thoseLinesStartOffset];
+                IList<LineSection> sections = new List<LineSection>();
 
-                int startPadding = thisLine.OriginalText.Length - thisLine.OriginalText.TrimStart().Length;
+                if (thisLine.LineType == LineTypes.Ignore)
+                    continue;
+
+                // we want nomatch only, and only if there is text on both sides to compare
+                if (thisLine.MatchType == MatchTypes.Match || string.IsNullOrEmpty(thisLine.RawText) || string.IsNullOrEmpty(thatLine.RawText))
+                    continue;
+
+                string thisLineText = thisLine.RawText.Trim();
+                string thatLineText = thatLine.RawText.Trim();
+
+                int startPadding = thisLine.RawText.Length - thisLine.RawText.TrimStart().Length;
                 if (startPadding != 0) {
-                    sections.Insert(0, new LineSection { LineStyle = LineStyle.Get(LineStyleNames.Whitespace), Text = string.Empty.PadLeft(startPadding) });
+                    sections.Insert(0, new LineSection { Style = LineStyle.Get(LineStyleNames.Whitespace), Text = string.Empty.PadLeft(startPadding) });
                 }
 
 
@@ -270,7 +375,7 @@ namespace MarkupDiff
                 {
                     leadTextSection = new LineSection
                     {
-                        LineStyle = LineStyle.Get(LineStyleNames.Match),
+                        Style = LineStyle.Get(LineStyleNames.Match),
                         Text = thisLineText.Substring(0, startSplit)
                     };
                     partialMatch = true;
@@ -283,7 +388,7 @@ namespace MarkupDiff
                 {
                     tailTextSection = new LineSection
                     {
-                        LineStyle = LineStyle.Get(LineStyleNames.Match),
+                        Style = LineStyle.Get(LineStyleNames.Match),
                         Text = thisLineText.Substring(endSplit, thisLineText.Length - endSplit)
                     }; 
 
@@ -307,7 +412,7 @@ namespace MarkupDiff
                 string differentText = thisLineText.Substring(differenceStart, differenceLength);
                 differentTextSection = new LineSection
                 {
-                    LineStyle = LineStyle.Get(LineStyleNames.NoMatch),
+                    Style = LineStyle.Get(LineStyleNames.NoMatch),
                     Text = differentText
                 };
 
@@ -323,7 +428,7 @@ namespace MarkupDiff
 
                 if (partialMatch)
                 {
-                    thisLine.LineType = LineComparisonTypes.PartialMatch;
+                    thisLine.MatchType = MatchTypes.PartialMatch;
                     thisLine.MatchedWithLineNumber = thatLine.OriginalLineNumber;
                 }
             }
@@ -350,8 +455,8 @@ namespace MarkupDiff
                     // --------------------------
                     // this is where full line matching logic is 
                     // do trim to ignore white space, this should toggleable as an app setting
-                    string rawSource = thisLine.OriginalText;
-                    string rawDestination = thatLine.OriginalText;
+                    string rawSource = thisLine.RawText;
+                    string rawDestination = thatLine.RawText;
                     if (rawSource == null)
                         rawSource = string.Empty;
 
@@ -370,8 +475,8 @@ namespace MarkupDiff
 
                     // --------------------------
                     if (match) {
-                        thisLine.LineType = LineComparisonTypes.Match;
-                        thatLine.LineType = LineComparisonTypes.Match;
+                        thisLine.MatchType = MatchTypes.Match;
+                        thatLine.MatchType = MatchTypes.Match;
                     }
 
                     if (match && thisLinecount < thatLineCount) {

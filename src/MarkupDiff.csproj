@@ -50,14 +50,14 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="FileAnaylser.cs" />
+    <Compile Include="FileComparer.cs" />
     <Compile Include="FileComparison.cs" />
     <Compile Include="FileLink.cs" />
     <Compile Include="FileSystemHelper.cs" />
     <Compile Include="Line.cs" />
     <Compile Include="LineSection.cs" />
     <Compile Include="LineStyleNames.cs" />
-    <Compile Include="LineComparisonTypes.cs" />
+    <Compile Include="LineTypes.cs" />
     <Compile Include="ListViewFast.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -68,6 +68,7 @@
     <Compile Include="MainForm.Designer.cs">
       <DependentUpon>MainForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="MatchTypes.cs" />
     <Compile Include="StringHelper.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Project.cs" />

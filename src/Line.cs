@@ -18,7 +18,9 @@ namespace MarkupDiff
         /// <summary>
         /// Match analysis of this line, against opposite file.
         /// </summary>
-        public LineComparisonTypes LineType { get; set; }
+        public LineTypes LineType { get; set; }
+
+        public MatchTypes? MatchType { get; set; }
 
         /// <summary>
         /// Original text line number from file.
@@ -35,12 +37,12 @@ namespace MarkupDiff
         /// Line number in opposite file thisline has a full or partial match with. Only relevent
         /// if linetype is match or partial match.
         /// </summary>
-        public int MatchedWithLineNumber { get; set; }
+        public int? MatchedWithLineNumber { get; set; }
 
         /// <summary>
         /// Original, unprocessed text line, from text file.
         /// </summary>
-        public string OriginalText { get; set; }
+        public string RawText { get; set; }
 
         #endregion
 

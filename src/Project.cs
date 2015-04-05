@@ -23,6 +23,8 @@ namespace MarkupDiff
         /// </summary>
         public string MatchTagEnd { get; set; }
 
+        public string LinkedTagTerminate { get; set; }
+
         /// <summary>
         /// 
         /// </summary>
@@ -79,7 +81,7 @@ namespace MarkupDiff
                 SourceRootFolder = doc.DocumentElement.Attributes["sourceFolder"].Value;
                 DestinationRootFolder = doc.DocumentElement.Attributes["destinationFolder"].Value;
                 matchTag = doc.DocumentElement.Attributes["matchTag"].Value;
-
+                LinkedTagTerminate = doc.DocumentElement.Attributes["matchTagTerminate"].Value;
                 TargetFilesToSearch = doc.DocumentElement.Attributes["destinationFileTypes"].Value.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
                 SourceFilesToSearch = doc.DocumentElement.Attributes["sourceFileTypes"].Value.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
             }

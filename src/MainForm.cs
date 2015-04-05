@@ -14,6 +14,7 @@ namespace MarkupDiff
 
         private FileLink _currentFileComparison ;
         private string _currentProjectFile;
+        private Project _currentProject;
         private FileSystemWatcher _sourceWatcher;
         private FileSystemWatcher _destinationWatcher;
 
@@ -64,6 +65,36 @@ namespace MarkupDiff
 
         }
 
+        private void SetStyle(IEnumerable<Line> lines)
+        {
+            foreach (Line line in lines) 
+            {
+                foreach (LineSection section in line.Sections) 
+                {
+                    // if section has no style, get style from line
+                    if (section.Style != null) 
+                        continue;
+
+                    if (line.MatchType.HasValue)
+                    {
+                        if (line.MatchType == MatchTypes.Match)
+                            section.Style = LineStyle.Get(LineStyleNames.Match);
+                        else
+                            section.Style = LineStyle.Get(LineStyleNames.NoMatch);
+                    }
+                    else
+                    {
+                        if (line.LineType == LineTypes.Whitespace)
+                            section.Style = LineStyle.Get(LineStyleNames.Whitespace);
+                        else
+                            section.Style = LineStyle.Get(LineStyleNames.Ignore);
+                    }
+
+                }
+ 
+            }
+        }
+
         /// <summary>
         /// Show differences between a source and target file.
         /// </summary>
@@ -77,10 +108,12 @@ namespace MarkupDiff
             WaitForFileFree(_currentFileComparison.DestinationFile);
 
             // get file comparison, this is where the actual "diff" analysis is done
-            FileAnaylser fileAnaylser = new FileAnaylser { 
-                ShowCodeLines = cbShowCode.Checked 
-            };
-            FileComparison result = fileAnaylser.Process(_currentFileComparison.SourceFile, _currentFileComparison.DestinationFile, _currentFileComparison.LinkingTag);
+            FileComparer fileComparer = new FileComparer(_currentFileComparison.LinkingTag, _currentProject.MatchTagStart, _currentProject.LinkedTagTerminate);
+            FileComparison result = fileComparer.Process(_currentFileComparison.SourceFile, _currentFileComparison.DestinationFile);
+
+            // set style classes for lines and line sections
+            SetStyle(result.DestinationFile);
+            SetStyle(result.SourceFile);
 
             // write analysis to rich text boxes
             rtbSource.Text = string.Empty;
@@ -89,12 +122,20 @@ namespace MarkupDiff
             // todo : see later for flicker reduction :http://www.c-sharpcorner.com/UploadFile/mgold/ColorSyntaxEditor12012005235814PM/ColorSyntaxEditor.aspx
             for (var i = 0; i < result.SourceFile.Count(); i++)
             {
-                RenderLine(rtbSource, result.SourceFile.ElementAt(i), i, result.SourceFile.Count());
+                Line line = result.SourceFile.ElementAt(i);
+                if (!cbShowCode.Checked && (line.LineType == LineTypes.Ignore || line.LineType == LineTypes.LinkingTag))
+                    continue;
+
+                RenderLine(rtbSource, line, i, result.SourceFile.Count());
             }
 
             for (var i = 0; i < result.DestinationFile.Count(); i++)
             {
-                RenderLine(rtbDestination, result.DestinationFile.ElementAt(i), i, result.SourceFile.Count());
+                Line line = result.DestinationFile.ElementAt(i);
+                if (!cbShowCode.Checked && (line.LineType == LineTypes.Ignore || line.LineType == LineTypes.LinkingTag))
+                    continue;
+
+                RenderLine(rtbDestination, line, i, result.SourceFile.Count());
             }
 
             lblDestinationFilePath.Text = _currentFileComparison.DestinationFile;
@@ -137,7 +178,7 @@ namespace MarkupDiff
         /// <param name="totalLineNumbers"></param>
         private void RenderLine(RichTextBox richTextBox, Line line, int rawLineNumber, int totalLineNumbers)
         {
-            string originalLineNumber = line.LineType == LineComparisonTypes.Whitespace ? " " : (line.OriginalLineNumber + 1).ToString();
+            string originalLineNumber = line.LineType == LineTypes.Whitespace ? " " : (line.OriginalLineNumber + 1).ToString();
             originalLineNumber = PadUntilLength(originalLineNumber, totalLineNumbers.ToString().Length);
 
             //raw line number
@@ -151,7 +192,12 @@ namespace MarkupDiff
 
             foreach (var section in line.Sections)
             {
-                richTextBox.AppendText(section.Text, section.LineStyle);
+                LineStyle sectionStyle = section.Style;
+                // todo : reorganize style fetching, it's spread everywhere
+                if (line.LineType == LineTypes.Ignore || line.LineType == LineTypes.LinkingTag)
+                    sectionStyle = LineStyle.Get(LineStyleNames.Ignore);
+
+                richTextBox.AppendText(section.Text, sectionStyle);
             }
             richTextBox.AppendText(Environment.NewLine);
         }
@@ -169,10 +215,10 @@ namespace MarkupDiff
             if (!File.Exists(_currentProjectFile))
                 throw new Exception(string.Format("Expected file '{0}' was not found.", _currentProjectFile));
 
-            Project project; 
+            
             try
             {
-                project = new Project(_currentProjectFile);
+                _currentProject = new Project(_currentProjectFile);
             }
             catch(Exception ex)
             {
@@ -180,15 +226,15 @@ namespace MarkupDiff
                 return;
             }
 
-            if (!Directory.Exists(project.SourceRootFolder))
+            if (!Directory.Exists(_currentProject.SourceRootFolder))
             {
-                MessageBox.Show(string.Format("The project source folder '{0}' does not exist.", project.SourceRootFolder));
+                MessageBox.Show(string.Format("The project source folder '{0}' does not exist.", _currentProject.SourceRootFolder));
                 return;
             }
 
-            if (!Directory.Exists(project.DestinationRootFolder))
+            if (!Directory.Exists(_currentProject.DestinationRootFolder))
             {
-                MessageBox.Show(string.Format("The project destination folder '{0}' does not exist.", project.DestinationRootFolder));
+                MessageBox.Show(string.Format("The project destination folder '{0}' does not exist.", _currentProject.DestinationRootFolder));
                 return;
             }
 
@@ -196,8 +242,8 @@ namespace MarkupDiff
             pnlProjects.Visible = false;
 
             // fetch all files in source and destination folders
-            IEnumerable<string> sourceFiles = FileSystemHelper.GetFilesUnder(project.SourceRootFolder, project.SourceFilesToSearch);
-            IEnumerable<string> destinationFiles = FileSystemHelper.GetFilesUnder(project.DestinationRootFolder, project.TargetFilesToSearch);
+            IEnumerable<string> sourceFiles = FileSystemHelper.GetFilesUnder(_currentProject.SourceRootFolder, _currentProject.SourceFilesToSearch);
+            IEnumerable<string> destinationFiles = FileSystemHelper.GetFilesUnder(_currentProject.DestinationRootFolder, _currentProject.TargetFilesToSearch);
 
 
             lvFiles.Items.Clear();
@@ -207,16 +253,16 @@ namespace MarkupDiff
             foreach (string destinationFile in destinationFiles)
             {
                 string fileContent = File.ReadAllText(destinationFile);
-                if (!fileContent.Contains(project.MatchTagStart))
+                if (!fileContent.Contains(_currentProject.MatchTagStart))
                     continue;
 
                 // more than one source file can be specified in source file
-                IEnumerable<string> linkedSourceFiles = StringHelper.ReturnBetweenAll(fileContent, project.MatchTagStart, project.MatchTagEnd);
+                IEnumerable<string> linkedSourceFiles = StringHelper.ReturnBetweenAll(fileContent, _currentProject.MatchTagStart, _currentProject.MatchTagEnd);
                 if (!linkedSourceFiles.Any())
                     continue;
 
                 foreach (string linkedSourceFile in linkedSourceFiles) {
-                    string linkingTag = project.MatchTagStart + linkedSourceFile + project.MatchTagEnd;
+                    string linkingTag = _currentProject.MatchTagStart + linkedSourceFile + _currentProject.MatchTagEnd;
                     string foundSourceFile = sourceFiles.FirstOrDefault(r => r.EndsWith(linkedSourceFile));
 
                     // todo warn about broken link
