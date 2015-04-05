@@ -20,7 +20,16 @@ namespace MarkupDiff
         /// </summary>
         public LineTypes LineType { get; set; }
 
+        /// <summary>
+        /// 
+        /// </summary>
         public MatchTypes? MatchType { get; set; }
+
+        /// <summary>
+        /// If lines matched are complex enough, this can be set to true. A strong link is cosmetic only, used in line alignment
+        /// when rendering results.
+        /// </summary>
+        public bool IsMatchQualityStrong { get; set; }
 
         /// <summary>
         /// Original text line number from file.
@@ -43,6 +52,12 @@ namespace MarkupDiff
         /// Original, unprocessed text line, from text file.
         /// </summary>
         public string RawText { get; set; }
+
+        /// <summary>
+        /// If true, line will not be compared. This holds for lines that are code, comments, or which have been demarkated as 
+        /// coming from a source other than the file being compared.
+        /// </summary>
+        public bool IgnoreFromProcess { get; set; }
 
         #endregion
 

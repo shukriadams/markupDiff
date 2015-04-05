@@ -10,5 +10,6 @@
         Whitespace = 2,
         Ignore = 3,
         LineNumber = 4,
+        Padding = 5
     }
 }

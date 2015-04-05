@@ -71,26 +71,6 @@ namespace MarkupDiff
 
 
 
-            // file analysis returns markup only, replace missing lines
-            // todo : this should be replaced with ignore flag useage
-            for (int i = 0; i < sourceLinesIn.Length; i++)
-            {
-                if (anaysis.SourceFile.Any(r => r.OriginalLineNumber == i))
-                    continue;
-
-                anaysis.SourceFile.Add(new Line { RawText = sourceLinesIn[i], OriginalLineNumber = i, LineType = LineTypes.Ignore });
-            }
-
-            for (int i = 0; i < destinationLinesIn.Length; i++)
-            {
-                if (anaysis.DestinationFile.Any(r => r.OriginalLineNumber == i))
-                    continue;
-
-                anaysis.DestinationFile.Add(new Line { RawText = destinationLinesIn[i], OriginalLineNumber = i, LineType = LineTypes.Ignore });
-            }
-
-
-
             // add sections to lines code, comments, etc
             BuildDefaultLineSections(anaysis.SourceFile);
             BuildDefaultLineSections(anaysis.DestinationFile);
@@ -104,15 +84,49 @@ namespace MarkupDiff
             CleanMatches(anaysis.SourceFile, anaysis.DestinationFile);
             CleanMatches(anaysis.DestinationFile, anaysis.SourceFile);
 
-            // remove padding
-            anaysis.SourceFile = anaysis.SourceFile.Where(r => r.LineType != LineTypes.Whitespace).ToList();
-            anaysis.DestinationFile = anaysis.DestinationFile.Where(r => r.LineType != LineTypes.Whitespace).ToList();
-
-            // order padding - this isnt necessary if padding is removed, but both should be toggled by user
-            anaysis.SourceFile = anaysis.SourceFile.OrderBy(r => r.OriginalLineNumber).ThenBy(r => r.PadsOriginalLineNumber).ToList();
-            anaysis.DestinationFile = anaysis.DestinationFile.OrderBy(r => r.OriginalLineNumber).ThenBy(r => r.PadsOriginalLineNumber).ToList();
+            // insert padding lines to align strong matches
+            PadToMatch(anaysis.SourceFile, anaysis.DestinationFile);
+            PadToMatch(anaysis.DestinationFile, anaysis.SourceFile);
 
             return anaysis;
+        }
+
+        private void PadToMatch(IList<Line> theseLines, IList<Line> thoseLines) 
+        {
+            bool changed = true;
+            while (changed)
+            {
+                changed = false;
+                for (int i = 0; i < theseLines.Count; i++)
+                {
+                    Line thisLine = theseLines[i];
+                    if (!thisLine.IsMatchQualityStrong)
+                        continue;
+
+                    Line thatLine = thoseLines.First(r => r.OriginalLineNumber == thisLine.MatchedWithLineNumber);
+                    int thatLineIndex = thoseLines.IndexOf(thatLine);
+                    if (thatLineIndex > i)
+                    {
+                        for (int j = 0; j < thatLineIndex - i; j++)
+                        {
+                            theseLines.Insert(i, new Line
+                            {
+                                IgnoreFromProcess = true,
+                                LineType = LineTypes.Padding,
+                                Sections = new[]{
+                                    new LineSection{
+                                        Style = LineStyle.Get(LineStyleNames.Padding),
+                                        Text = string.Empty
+                                    }
+                                }
+                            });
+                        }
+
+                        changed = true;
+                        break;
+                    }
+                }
+            }
         }
 
         #endregion
@@ -131,14 +145,13 @@ namespace MarkupDiff
             IList<Line> sourceLinesOut = new List<Line>();
             IList<Line> destinationLinesOut = new List<Line>();
 
-            // build raw lists first
+            // build raw lists first, flag empty or whitespace lines as ignore
             for (int i = 0; i < sourceLinesIn.Count; i++)
             {
-                // ignores empty lines
                 if (sourceLinesIn[i].Trim().Length == 0)
-                    continue;
-
-                sourceLinesOut.Add(new Line { RawText = sourceLinesIn[i], OriginalLineNumber = i, LineType= LineTypes.Markup });
+                    sourceLinesOut.Add(new Line { RawText = sourceLinesIn[i], OriginalLineNumber = i, LineType = LineTypes.Whitespace, IgnoreFromProcess = true });
+                else
+                    sourceLinesOut.Add(new Line { RawText = sourceLinesIn[i], OriginalLineNumber = i, LineType= LineTypes.Markup });
             }
 
 
@@ -162,11 +175,10 @@ namespace MarkupDiff
                 if (i < linkingTagOffset)
                     continue;
 
-                // ignores empty lines
                 if (destinationLinesIn[i].Trim().Length == 0)
-                    continue;
-
-                destinationLinesOut.Add(new Line { RawText = destinationLinesIn[i], OriginalLineNumber = i, LineType = LineTypes.Markup });
+                    destinationLinesOut.Add(new Line { RawText = destinationLinesIn[i], OriginalLineNumber = i, LineType = LineTypes.Whitespace, IgnoreFromProcess = true });
+                else
+                    destinationLinesOut.Add(new Line { RawText = destinationLinesIn[i], OriginalLineNumber = i, LineType = LineTypes.Markup });
             }
 
             // remove code and comments : todo move this to user-editable settings
@@ -175,19 +187,44 @@ namespace MarkupDiff
             this.FlagIgnored(sourceLinesOut, codeFlags);
             this.FlagIgnored(destinationLinesOut, codeFlags);
 
+            this.FindTerminate(sourceLinesOut);
+            this.FindTerminate(destinationLinesOut);
+
             // 
             IgnoreOtherLinkedFiles(sourceLinesOut, 0, false, this.LinkingTag);
             IgnoreOtherLinkedFiles(destinationLinesOut, 0, false, this.LinkingTag);
 
             // adds padding to each file so exact matches are aligned with eachother
-            FindMatches(sourceLinesOut, destinationLinesOut);
-            FindMatches(destinationLinesOut, sourceLinesOut);
+            FindFullMatches(sourceLinesOut, destinationLinesOut);
+            FindFullMatches(destinationLinesOut, sourceLinesOut);
 
             // creates a single section from entire original text. this is the default state.
             BuildDefaultLineSections(sourceLinesOut);
             BuildDefaultLineSections(destinationLinesOut);
             
             return new FileComparison(sourceLinesOut, destinationLinesOut);
+        }
+
+        private void FindTerminate(IList<Line> lines) 
+        {
+            int otherLinkTagsFound = 0;
+            bool terminateFound = false;
+            foreach (Line line in lines) 
+            {
+                string rawText = line.RawText.Trim();
+                if (rawText.StartsWith(this.LinkingTagStart) && rawText != this.LinkingTag)
+                    otherLinkTagsFound++;
+
+                if (rawText == this.LinkingTagTerminate)
+                {
+                    otherLinkTagsFound--;
+                    if (otherLinkTagsFound < 0)
+                        terminateFound = true;
+                }
+
+                if (terminateFound)
+                    line.IgnoreFromProcess = true;
+            }
         }
 
         /// <summary>
@@ -210,7 +247,7 @@ namespace MarkupDiff
                 }
 
                 if (markAsIgnore)
-                    line.LineType = LineTypes.Ignore;
+                    line.IgnoreFromProcess = true;
             }
         }
 
@@ -261,6 +298,7 @@ namespace MarkupDiff
                 if (rawText == this.LinkingTag)
                 {
                     line.LineType = LineTypes.LinkingTag;
+                    line.IgnoreFromProcess = true;
                 }
                 else
                 {
@@ -268,7 +306,7 @@ namespace MarkupDiff
                     {
                         if (rawText.StartsWith(checkFor))
                         {
-                            line.LineType = LineTypes.Ignore;
+                            line.IgnoreFromProcess = true;
                             break;
                         }
                     }
@@ -295,7 +333,7 @@ namespace MarkupDiff
             if (linkingTagIndex.HasValue)
             {
                 foreach (Line line in thoseLines.Take(linkingTagIndex.Value))
-                    line.LineType = LineTypes.Ignore;
+                    line.IgnoreFromProcess = true;
             }
 
             
@@ -304,7 +342,7 @@ namespace MarkupDiff
                 markupLines += linkingTagIndex.Value;
             
             foreach (Line line in theseLines.Take(theseLines.Count - markupLines))
-                line.LineType = LineTypes.Ignore;
+                line.IgnoreFromProcess = true;
 
                 
         }
@@ -343,7 +381,7 @@ namespace MarkupDiff
                 Line thatLine = thoseLines[i + thoseLinesStartOffset];
                 IList<LineSection> sections = new List<LineSection>();
 
-                if (thisLine.LineType == LineTypes.Ignore)
+                if (thisLine.IgnoreFromProcess)
                     continue;
 
                 // we want nomatch only, and only if there is text on both sides to compare
@@ -371,6 +409,7 @@ namespace MarkupDiff
 
 
                 // a startsplit means there is common text at start of strings. 0 indicates that there is at least some text
+                bool matchQualityStrong = false;
                 if (startSplit > 0)
                 {
                     leadTextSection = new LineSection
@@ -379,6 +418,9 @@ namespace MarkupDiff
                         Text = thisLineText.Substring(0, startSplit)
                     };
                     partialMatch = true;
+
+                    if (startSplit > 5) // todo : make user settable
+                        matchQualityStrong = true;
                 }
 
 
@@ -393,6 +435,10 @@ namespace MarkupDiff
                     }; 
 
                     partialMatch = true;
+
+                    if (endSplit > 5) // todo : make user settable
+                        matchQualityStrong = true;
+
                 }
 
 
@@ -430,6 +476,7 @@ namespace MarkupDiff
                 {
                     thisLine.MatchType = MatchTypes.PartialMatch;
                     thisLine.MatchedWithLineNumber = thatLine.OriginalLineNumber;
+                    thisLine.IsMatchQualityStrong = matchQualityStrong;
                 }
             }
         }
@@ -439,39 +486,43 @@ namespace MarkupDiff
         /// </summary>
         /// <param name="thisLines"></param>
         /// <param name="thoseLines"></param>
-        private static void FindMatches(IList<Line> thisLines, IList<Line> thoseLines)
+        private static void FindFullMatches(IList<Line> thisLines, IList<Line> thoseLines)
         {
-            int thisLinecount = 0;
-
-            while (thisLinecount < thisLines.Count)
+            int thisLineIterate = 0;
+            int thatLineLastFoundIndex = 0;
+            while (thisLineIterate < thisLines.Count)
             {
-                Line thisLine = thisLines[thisLinecount];
-                for (int thatLineCount = thisLinecount; thatLineCount < thoseLines.Count - thisLinecount; thatLineCount++)
+                Line thisLine = thisLines[thisLineIterate];
+                if (thisLine.IgnoreFromProcess)
                 {
-                    if (thatLineCount >= thoseLines.Count)
-                        return; // exit no more lines to compare with
+                    thisLineIterate++;
+                    continue;
+                }
 
-                    Line thatLine = thoseLines[thatLineCount];
+                // do not try to match if this line is already linked to an opposite line. cross-linking
+                // causes errors
+                if (thoseLines.Any(r => r.MatchedWithLineNumber == thisLine.OriginalLineNumber))
+                {
+                    thisLineIterate++;
+                    continue;
+                }
+
+                for (int thatLineIterate = thatLineLastFoundIndex; thatLineIterate < thoseLines.Count; thatLineIterate++)
+                {
+                    Line thatLine = thoseLines[thatLineIterate];
+                    if (thatLine.IgnoreFromProcess)
+                        continue;
+
                     // --------------------------
                     // this is where full line matching logic is 
                     // do trim to ignore white space, this should toggleable as an app setting
                     string rawSource = thisLine.RawText;
                     string rawDestination = thatLine.RawText;
-                    if (rawSource == null)
-                        rawSource = string.Empty;
-
-                    if (rawDestination == null)
-                        rawDestination = string.Empty;
                     
                     rawSource = rawSource.Trim();
                     rawDestination = rawDestination.Trim();
 
                     bool match = rawSource == rawDestination;
-
-                    // ignore empty lines
-                    if (rawSource.Length == 0 || rawDestination.Length == 0)
-                        match = false;
-
 
                     // --------------------------
                     if (match) {
@@ -479,15 +530,18 @@ namespace MarkupDiff
                         thatLine.MatchType = MatchTypes.Match;
                     }
 
-                    if (match && thisLinecount < thatLineCount) {
+                    if (match) {
+                        thatLineLastFoundIndex = thatLineIterate + 1; // + 1 so next match scan starts after current match, else we can match the same line repeatedly
                         thisLine.MatchedWithLineNumber = thatLine.OriginalLineNumber;
+                        thisLine.IsMatchQualityStrong = rawSource.Length > 5; // todo : make this user settable
                         break;
                     }
 
-                }
+                } // for
 
-                thisLinecount++;
-            }
+                thisLineIterate++;
+
+            } // while
         }
         
         #endregion

@@ -75,7 +75,11 @@ namespace MarkupDiff
                     if (section.Style != null) 
                         continue;
 
-                    if (line.MatchType.HasValue)
+                    // ignore overrides everything
+                    if (line.IgnoreFromProcess) {
+                        section.Style = LineStyle.Get(LineStyleNames.Ignore);
+                    }
+                    else if (line.MatchType.HasValue)
                     {
                         if (line.MatchType == MatchTypes.Match)
                             section.Style = LineStyle.Get(LineStyleNames.Match);
@@ -123,7 +127,7 @@ namespace MarkupDiff
             for (var i = 0; i < result.SourceFile.Count(); i++)
             {
                 Line line = result.SourceFile.ElementAt(i);
-                if (!cbShowCode.Checked && (line.LineType == LineTypes.Ignore || line.LineType == LineTypes.LinkingTag))
+                if (!cbShowCode.Checked && line.IgnoreFromProcess)
                     continue;
 
                 RenderLine(rtbSource, line, i, result.SourceFile.Count());
@@ -132,10 +136,10 @@ namespace MarkupDiff
             for (var i = 0; i < result.DestinationFile.Count(); i++)
             {
                 Line line = result.DestinationFile.ElementAt(i);
-                if (!cbShowCode.Checked && (line.LineType == LineTypes.Ignore || line.LineType == LineTypes.LinkingTag))
+                if (!cbShowCode.Checked && line.IgnoreFromProcess)
                     continue;
 
-                RenderLine(rtbDestination, line, i, result.SourceFile.Count());
+                RenderLine(rtbDestination, line, i, result.DestinationFile.Count());
             }
 
             lblDestinationFilePath.Text = _currentFileComparison.DestinationFile;
@@ -178,23 +182,26 @@ namespace MarkupDiff
         /// <param name="totalLineNumbers"></param>
         private void RenderLine(RichTextBox richTextBox, Line line, int rawLineNumber, int totalLineNumbers)
         {
-            string originalLineNumber = line.LineType == LineTypes.Whitespace ? " " : (line.OriginalLineNumber + 1).ToString();
-            originalLineNumber = PadUntilLength(originalLineNumber, totalLineNumbers.ToString().Length);
-
             //raw line number
             string lineNumberOut = (rawLineNumber + 1).ToString();
             lineNumberOut = PadUntilLength(lineNumberOut, totalLineNumbers.ToString().Length);
-
             richTextBox.AppendText(lineNumberOut);
 
             // file line number
+            string originalLineNumber = line.LineType == LineTypes.Padding ? " " : (line.OriginalLineNumber + 1).ToString();
+            originalLineNumber = PadUntilLength(originalLineNumber, totalLineNumbers.ToString().Length);
             richTextBox.AppendText(originalLineNumber, LineStyle.Get(LineStyleNames.LineNumber));
+
+            // linked line number
+            string linkedLineNumber = line.MatchType.HasValue ? (line.MatchedWithLineNumber + 1).ToString() : " ";
+            linkedLineNumber = PadUntilLength(linkedLineNumber, totalLineNumbers.ToString().Length);
+            richTextBox.AppendText(linkedLineNumber, LineStyle.Get(LineStyleNames.NoMatch));
 
             foreach (var section in line.Sections)
             {
                 LineStyle sectionStyle = section.Style;
                 // todo : reorganize style fetching, it's spread everywhere
-                if (line.LineType == LineTypes.Ignore || line.LineType == LineTypes.LinkingTag)
+                if (sectionStyle == null)
                     sectionStyle = LineStyle.Get(LineStyleNames.Ignore);
 
                 richTextBox.AppendText(section.Text, sectionStyle);

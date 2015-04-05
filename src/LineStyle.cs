@@ -46,11 +46,13 @@ namespace MarkupDiff
         {
             List<LineStyle> styles = new List<LineStyle>();
 
-            styles.Add(new LineStyle ( LineStyleNames.LineNumber, Color.Black, Color.White, true ));
-            styles.Add(new LineStyle ( LineStyleNames.Match, Color.LightGreen, Color.Green, true ));
-            styles.Add(new LineStyle ( LineStyleNames.NoMatch, Color.Red, Color.Black, true ));
-            styles.Add(new LineStyle ( LineStyleNames.Whitespace, Color.Gray, Color.DarkGray, false ));
-            styles.Add(new LineStyle ( LineStyleNames.Ignore, Color.DarkGreen, Color.LightGreen, false ));
+            styles.Add(new LineStyle ( LineStyleNames.LineNumber, Color.Black, Color.White, true ) );
+            styles.Add(new LineStyle ( LineStyleNames.Match, Color.LightGreen, Color.Green, true ) );
+            styles.Add(new LineStyle ( LineStyleNames.NoMatch, Color.Red, Color.Black, true ) );
+            styles.Add(new LineStyle ( LineStyleNames.Whitespace, Color.Gray, Color.DarkGray, false ) );
+            styles.Add(new LineStyle ( LineStyleNames.Padding, Color.White, Color.White, false) );
+            styles.Add(new LineStyle ( LineStyleNames.Ignore, Color.DarkGreen, Color.LightGreen, false ) );
+
             return styles;
         }
 
