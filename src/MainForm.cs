@@ -112,8 +112,8 @@ namespace MarkupDiff
             WaitForFileFree(_currentFileComparison.DestinationFile);
 
             // get file comparison, this is where the actual "diff" analysis is done
-            FileComparer fileComparer = new FileComparer(_currentFileComparison.LinkingTag, _currentProject.MatchTagStart, _currentProject.LinkedTagTerminate);
-            FileComparison result = fileComparer.Process(_currentFileComparison.SourceFile, _currentFileComparison.DestinationFile);
+            FileComparer fileComparer = new FileComparer();
+            FileComparison result = fileComparer.Compare(_currentFileComparison.SourceFile, _currentFileComparison.DestinationFile, _currentFileComparison.LinkingTag, _currentProject);
 
             // set style classes for lines and line sections
             SetStyle(result.DestinationFile);
@@ -192,18 +192,20 @@ namespace MarkupDiff
             originalLineNumber = PadUntilLength(originalLineNumber, totalLineNumbers.ToString().Length);
             richTextBox.AppendText(originalLineNumber, LineStyle.Get(LineStyleNames.LineNumber));
 
-            // linked line number
+            // linked line number - don't delete this, it's handy for debugging
+            /*
             string linkedLineNumber = line.MatchType.HasValue ? (line.MatchedWithLineNumber + 1).ToString() : " ";
             linkedLineNumber = PadUntilLength(linkedLineNumber, totalLineNumbers.ToString().Length);
             richTextBox.AppendText(linkedLineNumber, LineStyle.Get(LineStyleNames.NoMatch));
+            */
 
             foreach (var section in line.Sections)
             {
                 LineStyle sectionStyle = section.Style;
-                // todo : reorganize style fetching, it's spread everywhere
                 if (sectionStyle == null)
                     sectionStyle = LineStyle.Get(LineStyleNames.Ignore);
-
+                if (line.LineType == LineTypes.LinkingTag)
+                    sectionStyle = LineStyle.Get(LineStyleNames.LinkingTag);
                 richTextBox.AppendText(section.Text, sectionStyle);
             }
             richTextBox.AppendText(Environment.NewLine);

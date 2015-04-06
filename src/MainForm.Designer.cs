@@ -1,4 +1,6 @@
-﻿namespace MarkupDiff
+﻿using System.Drawing;
+
+namespace MarkupDiff
 {
     partial class MainForm
     {

@@ -23,6 +23,9 @@ namespace MarkupDiff
         /// </summary>
         public string MatchTagEnd { get; set; }
 
+        /// <summary>
+        /// 
+        /// </summary>
         public string LinkedTagTerminate { get; set; }
 
         /// <summary>
@@ -45,6 +48,13 @@ namespace MarkupDiff
         /// </summary>
         public string DestinationRootFolder { get; set; }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        public int StringLengthForStrongMatch { get; private set; }
+
+        public IEnumerable<string> IgnoreFlags { get; private set; }
+
         #endregion
 
         #region CTORS
@@ -55,6 +65,9 @@ namespace MarkupDiff
         /// <param name="path"></param>
         public Project(string path) 
         {
+            this.StringLengthForStrongMatch = 5; // todo : move this value to project file
+            this.IgnoreFlags = new[] { "@", "{{", "<!--", "{{!" }; // todo : move this value to project file
+
             XmlDocument doc = new XmlDocument();
             
             try 
